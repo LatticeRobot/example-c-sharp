@@ -16,6 +16,7 @@ internal class Program {
 
         var codeRepPath = unitCellLocation;
         if (!Directory.Exists(codeRepPath)) {
+            // HACK: Assume that Samples directory is relative to the program executable
             const string samplesRelPath = @"Samples";
             string repoDirPath = PathUtil.FindDirectoryContaining(samplesRelPath);
 

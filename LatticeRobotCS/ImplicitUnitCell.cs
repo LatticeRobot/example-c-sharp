@@ -14,8 +14,6 @@ public class ImplicitUnitCell : BoundedImplicitFunction3d {
 
     public Dictionary<string, ImplicitParameter> Parameters { get; private set; }
 
-    const string sourcePath = @"..\..\..";
-    
     public ImplicitUnitCell(string codeRepPath, int latticeIndex) {
         Console.WriteLine($"Using unit cell {codeRepPath}.");
 
@@ -27,17 +25,22 @@ public class ImplicitUnitCell : BoundedImplicitFunction3d {
 
         Parameters = manifest.parameters.ToDictionary(p => p.name, p => p);
 
+        // HACK: Assume that common sources directory is relative to the program executable
+        const string ImplicitCS = "Implicit.cs";
+        string commonSourcesDirPath = PathUtil.FindDirectoryContaining(ImplicitCS);
+
         var sources = new string[] {
-            Path.Combine(sourcePath, "Implicit.cs"),
-            Path.Combine(sourcePath, "ImplicitParameter.cs"),
+            Path.Combine(commonSourcesDirPath, ImplicitCS),
+            Path.Combine(commonSourcesDirPath, "ImplicitParameter.cs"),
             Path.Combine(codeRepPath, manifest.cSharpLibrary),
             Path.Combine(codeRepPath, manifest.cSharpCode)
         };
+        PathUtil.AssertExists(sources);
 
         var codeList = sources.Select(s => ReadText(s));
 
         unitCellType = BuildImplicit(codeList);
-        if (unitCellType == null) 
+        if (unitCellType == null)
             throw new Exception("Error compiling unit cell.");
 
         var latticeIndexField = unitCellType.GetField("VariantIndex");
@@ -75,7 +78,6 @@ public class ImplicitUnitCell : BoundedImplicitFunction3d {
         return new AxisAlignedBox3d(-halfsize, halfsize);
     }
 
-    
     private static Type BuildImplicit(IEnumerable<string> sources) {
         // based on
         // https://stackoverflow.com/questions/32769630/how-to-compile-a-c-sharp-file-with-roslyn-programmatically
