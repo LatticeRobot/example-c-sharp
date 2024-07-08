@@ -5,15 +5,27 @@
 using g4;
 
 internal class Program {
+
     private static int Main(string[] args) {
         var unitCellLocation = "LatticeRobot-Diamond_TPMS";
 
-        if (args.Length == 0) 
+        if (args.Length == 0)
             Console.WriteLine($"Using default unit cell: {unitCellLocation}.");
         else
             unitCellLocation = args[0];
-        
-        var unitCell = new ImplicitUnitCell(Path.Combine(@"..\..\..\..\Samples\", unitCellLocation), 2);
+
+        var codeRepPath = unitCellLocation;
+        if (!Directory.Exists(codeRepPath)) {
+            const string samplesRelPath = @"Samples";
+            string repoDirPath = PathUtil.FindDirectoryContaining(samplesRelPath);
+
+            // Find the code rep directory
+            codeRepPath = Path.Combine(repoDirPath, samplesRelPath, unitCellLocation);
+            if (!Directory.Exists(codeRepPath))
+                throw new Exception($"Could not find {codeRepPath}");
+        }
+
+        var unitCell = new ImplicitUnitCell(codeRepPath, 2);
 
         // With this implementation of ImplicitUnitCell, we can only set constant parameters.  
         unitCell.SetParameter("gyroid", 0.25);
