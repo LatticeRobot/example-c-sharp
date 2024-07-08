@@ -23,5 +23,22 @@ class PathUtil {
             dirPath = Path.GetDirectoryName(dirPath);
         } while (true);
     }
+
+    /// <summary>
+    /// Throw an exception if any of the specified paths do not exist.
+    /// </summary>
+    /// <param name="paths"></param>
+    public static void AssertExists(string[] paths) {
+        foreach (var p in paths) PathUtil.AssertExists(p);
+    }
+
+    /// <summary>
+    /// Throw an exception if the specified path does not exist.
+    /// </summary>
+    /// <param name="path"></param>
+    public static void AssertExists(string path) {
+        if (File.Exists(path) || Directory.Exists(path)) return;
+        throw new Exception($"Could not find {path}");
+    }
 }
 

@@ -21,8 +21,7 @@ internal class Program {
 
             // Find the code rep directory
             codeRepPath = Path.Combine(repoDirPath, samplesRelPath, unitCellLocation);
-            if (!Directory.Exists(codeRepPath))
-                throw new Exception($"Could not find {codeRepPath}");
+            PathUtil.AssertExists(codeRepPath);
         }
 
         var unitCell = new ImplicitUnitCell(codeRepPath, 2);
