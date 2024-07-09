@@ -58,7 +58,10 @@ internal class Program {
             Box = new Box3d(bbox)
         };
 
-        generateMeshF(new ImplicitIntersection3d() { A = unitCell, B = box }, 128, "LatticeRobot.obj");
+        const string OutputFileName = "LatticeRobot.obj";
+        generateMeshF(new ImplicitIntersection3d() { A = unitCell, B = box }, 128, OutputFileName);
+
+        Console.WriteLine($"Mesh written to {OutputFileName}\nin {Directory.GetCurrentDirectory()}");
 
         return 0;
     }
