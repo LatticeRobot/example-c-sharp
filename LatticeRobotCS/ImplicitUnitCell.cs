@@ -14,8 +14,6 @@ public class ImplicitUnitCell : BoundedImplicitFunction3d {
 
     public Dictionary<string, ImplicitParameter> Parameters { get; private set; }
 
-    const string sourcePath = @"..\..\..";
-    
     public ImplicitUnitCell(string codeRepPath, int latticeIndex) {
         Console.WriteLine($"Using unit cell {codeRepPath}.");
 
@@ -27,17 +25,22 @@ public class ImplicitUnitCell : BoundedImplicitFunction3d {
 
         Parameters = manifest.parameters.ToDictionary(p => p.name, p => p);
 
+        // HACK: Assume that common sources directory is relative to the program executable
+        const string ImplicitCS = "Implicit.cs";
+        string commonSourcesDirPath = PathUtil.FindDirectoryContaining(ImplicitCS);
+
         var sources = new string[] {
-            Path.Combine(sourcePath, "Implicit.cs"),
-            Path.Combine(sourcePath, "ImplicitParameter.cs"),
+            Path.Combine(commonSourcesDirPath, ImplicitCS),
+            Path.Combine(commonSourcesDirPath, "ImplicitParameter.cs"),
             Path.Combine(codeRepPath, manifest.cSharpLibrary),
             Path.Combine(codeRepPath, manifest.cSharpCode)
         };
+        PathUtil.AssertExists(sources);
 
         var codeList = sources.Select(s => ReadText(s));
 
         unitCellType = BuildImplicit(codeList);
-        if (unitCellType == null) 
+        if (unitCellType == null)
             throw new Exception("Error compiling unit cell.");
 
         var latticeIndexField = unitCellType.GetField("VariantIndex");
@@ -75,29 +78,36 @@ public class ImplicitUnitCell : BoundedImplicitFunction3d {
         return new AxisAlignedBox3d(-halfsize, halfsize);
     }
 
-    
     private static Type BuildImplicit(IEnumerable<string> sources) {
         // based on
         // https://stackoverflow.com/questions/32769630/how-to-compile-a-c-sharp-file-with-roslyn-programmatically
         // https://weblog.west-wind.com/posts/2022/Jun/07/Runtime-CSharp-Code-Compilation-Revisited-for-Roslyn
 
+        const string GeomSharpPath = "geometry4Sharp.dll";
+        string rtBaseFilePath = typeof(object).Assembly.Location;
+
+        // Get the dotnet system runtime and project runtime directories
+        string rtBaseDirPath = Path.GetDirectoryName(rtBaseFilePath);
+        string rtProjDirPath = PathUtil.FindDirectoryContaining(GeomSharpPath);
+
         var syntaxTrees = sources.Select(s => CSharpSyntaxTree.ParseText(s)).ToArray();
-        var rtPath = Path.GetDirectoryName(typeof(object).Assembly.Location) + Path.DirectorySeparatorChar;
+        string[] rtFilePaths = new string[] {
+            rtBaseFilePath,
+            Path.Combine(rtBaseDirPath, "System.Runtime.dll"),
+            Path.Combine(rtBaseDirPath, "System.Collections.dll"),
+            Path.Combine(rtProjDirPath, GeomSharpPath)
+        };
+        PathUtil.AssertExists(rtFilePaths);
+
         CSharpCompilation compilation = CSharpCompilation.Create(
             "assemblyName",
             syntaxTrees,
-            new[] { 
-                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-                MetadataReference.CreateFromFile(rtPath + "System.Runtime.dll"),
-                MetadataReference.CreateFromFile(rtPath + "System.Collections.dll"),
-                MetadataReference.CreateFromFile("geometry4Sharp.dll")
-                },
+            rtFilePaths.Select((path) => MetadataReference.CreateFromFile(path)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
         Assembly? assembly = null;
         using (var dllStream = new MemoryStream())
-        using (var pdbStream = new MemoryStream())
-        {
+        using (var pdbStream = new MemoryStream()) {
             var emitResult = compilation.Emit(dllStream, pdbStream);
             if (!emitResult.Success) {
                 emitResult.Diagnostics.ToList().ForEach(error => Console.WriteLine(error.ToString()));
